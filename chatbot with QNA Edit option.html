@@ -1,0 +1,401 @@
+<style>
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+.chat-container {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.chat-header {
+  padding: 20px;
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #ccc;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chat-header h1 {
+  font-size: 24px;
+  margin: 0;
+}
+
+.chat-box {
+  height: 400px;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.chat-message {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.user-message {
+  justify-content: flex-end;
+}
+
+.bot-message {
+  justify-content: flex-start;
+}
+
+.chat-message img {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  margin-right: 10px;
+}
+
+.chat-message p {
+  background-color: #f5f5f5;
+  border-radius: 20px;
+  padding: 10px 15px;
+  margin: 0;
+}
+
+.chat-input {
+  display: flex;
+  align-items: center;
+  background-color: #f5f5f5;
+  padding: 10px 20px;
+  border-top: 1px solid #ccc;
+}
+
+.chat-input input[type="text"] {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 10px;
+  border-radius: 20px;
+  margin-right: 10px;
+}
+
+.chat-input button {
+  background-color: #4CAF50;
+  color: #fff;
+  border: none;
+  outline: none;
+  padding: 10px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background-color 0.3s ease-in-out;
+}
+
+.chat-input button:hover {
+  background-color: #3e8e41;
+}
+
+.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+#overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: none;
+  z-index: 1;
+}
+
+#popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 400px;
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  display: none;
+  z-index: 2;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.popup-header h2 {
+  font-size: 20px;
+  margin: 0;
+}
+
+.close {
+  font-size: 24px;}
+</style>
+<body>
+	<div class="chat-container">
+		<div class="chat-header">
+			<h1>AI Chatbot</h1>
+			<button onclick="openPopup('','')">Edit Q&A</button>
+		</div>
+		<div class="chat-box" id="chatBox"></div>
+		<div class="chat-input">
+			<input type="text" placeholder="Type a message..." id="textInput" onkeydown="handleInput(event)">
+			<button onclick="send()">Send</button>
+		</div>
+	</div>
+	<div id="overlay"></div>
+	<div id="popup">
+		<div class="popup-header">
+			<h2>Edit Q&A</h2>
+			<span class="close" onclick="closePopup()">&times;</span>
+		</div>
+		<div class="popup-content">
+			<form onsubmit="return saveChanges()">
+				<label for="question">Question:</label>
+				<input type="text" id="question" name="question" required>
+				<label for="answer">Answer:</label>
+				<input type="text" id="answer" name="answer" required>
+				<input type="submit" value="Save Changes">
+				<button type="button" onclick="closePopup()">Close</button>
+			</form>
+		</div>
+	</div>
+
+	<script>
+	// Initialize the chatbot
+	var qna = [
+		{
+			"question": "What is your name?",
+			"answer": "My name is Chatbot."
+		},
+		{
+			"question": "What can you do?",
+			"answer": "I can answer your questions and help you with various tasks."
+		},
+		{
+			"question": "How old are you?",
+			"answer": "I am a machine learning model, so I don't have an age!"
+		},
+		{
+			"question": "What is your favorite color?",
+			"answer": "I don't have a favorite color, but I like all colors equally!"
+		},
+		{
+			"question": "What is the meaning of life?",
+			"answer": "The meaning of life is a philosophical question that has been debated for centuries. Some believe that it is to seek happiness, while others believe it is to serve a higher purpose or God."
+		},
+		{
+			"question": "What is the weather like today?",
+			"answer": "I'm sorry, I don't have the ability to check the weather. You can check it online or through a weather app!"
+		},
+		{
+			"question": "How do I reset my password?",
+			"answer": "You can reset your password by going to the login page and clicking on the 'Forgot Password' link. You will then be prompted to enter your email address and follow the instructions sent to your email to reset your password."
+}
+];
+
+// Function to generate the chat message HTML
+function getChatMessageHTML(message, isUser) {
+	var className = isUser ? "chat-message user-message" : "chat-message bot-message";
+	var avatarURL = isUser ? "https://via.placeholder.com/50x50.png?text=User" : "https://via.placeholder.com/50x50.png?text=Bot";
+	var name = isUser ? "You" : "Chatbot";
+	return `
+		<div class="${className}">
+			<img src="${avatarURL}" alt="${name}">
+			<p>${message}</p>
+		</div>
+	`;
+}
+
+// Function to add a message to the chat
+function addMessageToChat(message, isUser) {
+	var chatBox = document.getElementById("chatBox");
+	chatBox.innerHTML += getChatMessageHTML(message, isUser);
+	chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// Function to handle user input
+function handleInput(event) {
+	if (event.key === "Enter") {
+		send();
+	}
+}
+
+// Function to send the user's message to the chatbot and get a response
+function send() {
+	var input = document.getElementById("textInput");
+	var message = input.value;
+	addMessageToChat(message, true);
+	input.value = "";
+	setTimeout(function() {
+		var response = getResponse(message);
+		addMessageToChat(response, false);
+	}, 500);
+}
+
+// Function to get the chatbot's response to a message
+function getResponse(message) {
+	for (var i = 0; i < qna.length; i++) {
+		var qnaItem = qna[i];
+		if (qnaItem.question.toLowerCase() === message.toLowerCase()) {
+			return qnaItem.answer;
+		}
+	}
+	return "I'm sorry, I don't understand. Please try asking another question.";
+}
+
+// Function to open the popup
+function openPopup(question, answer) {
+	document.getElementById("overlay").style.display = "block";
+	document.getElementById("popup").style.display = "block";
+	document.getElementById("question").value = question;
+	document.getElementById("answer").value = answer;
+	document.getElementById("textInput").disabled = true;
+	document.getElementById("chatBox").classList.add("disabled");
+	document.querySelector(".chat-header button").style.display = "none";
+}
+
+// Function to close the popup
+function closePopup() {
+	document.getElementById("overlay").style.display = "none";
+	document.getElementById("popup").style.display = "none";
+	document.getElementById("textInput").disabled = false;
+	document.getElementById("chatBox").classList.remove("disabled");
+	document.querySelector(".chat-header button").style.display = "block";
+}
+
+// Function to save the changes made to the Q&A
+// Function to save the changes made to the Q&A
+var chatBox = document.getElementById("chatBox");
+
+function addChat(chat, sender) {
+	var chatElement = document.createElement("div");
+	chatElement.classList.add("chat");
+	if (sender === "user") {
+		chatElement.classList.add("user");
+	} else {
+		chatElement.classList.add("chatbot");
+	}
+	chatElement.innerHTML = chat;
+	chatBox.appendChild(chatElement);
+}
+
+function send() {
+	var inputBox = document.getElementById("textInput");
+	var text = inputBox.value.trim();
+	if (text.length === 0) {
+		return;
+	}
+	addChat(text, "user");
+	inputBox.value = "";
+	var answer = getAnswer(text);
+	addChat(answer, "chatbot");
+}
+
+function handleInput(event) {
+	if (event.keyCode === 13) {
+		event.preventDefault();
+		send();
+	}
+}
+
+function getAnswer(question) {
+	for (var i = 0; i < qna.length; i++) {
+		if (qna[i].question.toLowerCase() === question.toLowerCase()) {
+			return qna[i].answer;
+		}
+	}
+	return "I'm sorry, I don't understand your question. Please try asking something else.";
+}
+
+// Popup functionality
+var overlay = document.getElementById("overlay");
+var popup = document.getElementById("popup");
+var editButton = document.querySelector(".chat-header button");
+
+editButton.addEventListener("click", function() {
+	openPopup("", "");
+});
+
+function openPopup(question, answer) {
+	overlay.style.display = "block";
+	popup.style.display = "block";
+	document.getElementById("question").value = question;
+	document.getElementById("answer").value = answer;
+}
+
+function closePopup() {
+	overlay.style.display = "none";
+	popup.style.display = "none";
+	editButton.style.display = "block";
+}
+
+function saveChanges() {
+	var question = document.getElementById("question").value.trim();
+	var answer = document.getElementById("answer").value.trim();
+	if (question.length === 0 || answer.length === 0) {
+		return false;
+	}
+	var found = false;
+	for (var i = 0; i < qna.length; i++) {
+		if (qna[i].question.toLowerCase() === question.toLowerCase()) {
+			qna[i].answer = answer;
+			found = true;
+			break;
+		}
+	}
+	if (!found) {
+		qna.push({ "question": question, "answer": answer });
+	}
+	closePopup();
+	return false;
+}// Create a new instance of the SpeechSynthesisUtterance object
+
+
+// Use the speechSynthesis object to speak the text
+speechSynthesis.speak(msg);
+
+// Create a new instance of the SpeechRecognition object
+const recognition = new SpeechRecognition();
+
+// Add an event listener to the recognition object for the "result" event
+recognition.addEventListener("result", e => {
+  // Get the transcript of the speech input
+  const transcript = e.results[0][0].transcript;
+
+  // Do something with the transcript, such as send it to your chatbot for processing
+});
+
+// Start the speech recognition
+recognition.start();
+var msg = new SpeechSynthesisUtterance();
+msg.text = "Hello, I am a chatbot.";
+msg.voiceURI = "native";
+msg.lang = "en-US";
+window.speechSynthesis.speak(msg);
+function send() {
+	var input = document.getElementById("textInput");
+	var message = input.value;
+	addMessageToChat(message, true);
+	input.value = "";
+	setTimeout(function() {
+		var response = getResponse(message);
+		addMessageToChat(response, false);
+		var msg = new SpeechSynthesisUtterance();
+		msg.text = response;
+		msg.voiceURI = "native";
+		msg.lang = "en-US";
+		window.speechSynthesis.speak(msg);
+	}, 500);
+}
+</script>
